@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>משחק המבחנות - Color Sorting Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .status {
+            font-size: 16px;
+            margin-bottom: 10px;
+            min-height: 30px;
+        }
+
+        .win-message {
+            color: #FFD700;
+            font-weight: bold;
+            font-size: 18px;
+            animation: pulse 0.5s infinite alternate;
+        }
+
+        .fireworks {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .firework {
+            position: absolute;
+            border-radius: 50%;
+            animation: burst 2.5s ease-out forwards;
+            box-shadow: 0 0 10px currentColor;
+        }
+
+        @keyframes burst {
+            0% {
+                opacity: 1;
+                transform: translate(0, 0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(var(--tx), var(--ty)) scale(0);
+            }
+        }
+
+        @keyframes pulse {
+            from { opacity: 0.8; }
+            to { opacity: 1; }
+        }
+
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .small-tubes {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .large-tubes {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .tube {
+            display: flex;
+            flex-direction: column-reverse;
+            align-items: center;
+            cursor: pointer;
+            position: relative;
+            height: 180px;
+        }
+
+        .large-tube {
+            height: 200px;
+        }
+
+        .tube-body {
+            width: 70px;
+            height: 130px;
+            border: 3px solid #333;
+            border-radius: 0 0 15px 15px;
+            display: flex;
+            flex-direction: column-reverse;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .large-tube .tube-body {
+            width: 60px;
+            height: 150px;
+        }
+
+        .tube-cap {
+            width: 56px;
+            height: 12px;
+            background: linear-gradient(to bottom, #999, #666);
+            border-radius: 5px 5px 0 0;
+            border: 1px solid #444;
+            margin-top: 2px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .large-tube .tube-cap {
+            width: 66px;
+        }
+
+        .liquid {
+            flex: 1;
+            width: 100%;
+            border: 0;
+            display: flex;
+            align-items: flex-end;
+            min-height: 15px;
+            border-radius: 2px;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .tube-body .liquid:last-child {
+            min-height: 15px;
+        }
+
+        .tube.selected .tube-body {
+            border: 3px solid #FFD700;
+            box-shadow: inset 0 0 10px rgba(255, 215, 0, 0.5), 0 0 15px rgba(255, 215, 0, 0.7);
+        }
+
+        .tube-label {
+            color: white;
+            margin-top: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            text-align: center;
+            min-height: 20px;
+        }
+
+        .section-label {
+            color: white;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: right;
+            font-size: 16px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            color: white;
+            min-width: 120px;
+        }
+
+        .btn-reset {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .btn-reset:active {
+            transform: scale(0.95);
+        }
+
+        .btn-new-game {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .btn-new-game:active {
+            transform: scale(0.95);
+        }
+
+        .intro-screen {
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .intro-screen h2 {
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        .intro-screen p {
+            margin-bottom: 10px;
+            line-height: 1.6;
+            font-size: 14px;
+            text-align: right;
+        }
+
+        .color-info {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .color-sample {
+            width: 30px;
+            height: 30px;
+            border-radius: 5px;
+            border: 2px solid white;
+        }
+
+        @media (orientation: portrait) {
+            .small-tubes {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .large-tubes {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (orientation: landscape) {
+            .small-tubes {
+                grid-template-columns: repeat(6, 1fr);
+            }
+            .large-tubes {
+                grid-template-columns: repeat(5, 1fr);
+            }
+            .tube {
+                height: 130px;
+            }
+            .tube-body {
+                height: 90px;
+            }
+            .large-tube {
+                height: 130px;
+            }
+            .large-tube .tube-body {
+                height: 100px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="fireworks" id="fireworks"></div>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 משחק המבחנות</h1>
+            <div class="status" id="status">לחץ על מבחנה קטנה ואחר כך על מבחנה גדולה</div>
+        </div>
+
+        <div class="game-area">
+            <div>
+                <div class="section-label">🧪 המבחנות הקטנות (מקור):</div>
+                <div class="small-tubes" id="smallTubes"></div>
+            </div>
+
+            <div>
+                <div class="section-label">🏆 המבחנות הגדולות (יעד):</div>
+                <div class="large-tubes" id="largeTubes"></div>
+            </div>
+        </div>
+
+        <div class="controls" style="margin-top: 30px;">
+            <button class="btn-reset" onclick="resetGame()">🔄 ניסיון/הוצאה</button>
+            <button class="btn-new-game" onclick="newGame()">✨ משחק חדש</button>
+            <button class="btn-reset" onclick="autoPlayGame()">🤖 שחק אוטומטית</button>
+        </div>
+    </div>
+
+    <script>
+        const COLORS = [
+            '#FF6B6B', // Red
+            '#4ECDC4', // Teal
+            '#FFE66D', // Yellow
+            '#AA96DA', // Purple
+            '#FCBAD3', // Pink
+            '#FF8C42', // Orange
+            '#2ECC71'  // Green
+        ];
+
+        const COLOR_NAMES = {
+            '#FF6B6B': '🔴 אדום',
+            '#4ECDC4': '🔵 כחול-ירוק',
+            '#FFE66D': '🟡 צהוב',
+            '#AA96DA': '💜 סגול',
+            '#FCBAD3': '💖 ורוד',
+            '#FF8C42': '🟠 כתום',
+            '#2ECC71': '💚 ירוק'
+        };
+
+        const SMALL_TUBE_SIZE = 5;
+        const LARGE_TUBE_SIZE = 5;
+        const LARGE_TUBE_COUNT = 5;
+
+        let gameState = {
+            smallTubes: [],
+            largeTubes: [],
+            selectedSmallTube: null,
+            gameWon: false,
+            completedLargeTubes: 0
+        };
+
+        function initGame() {
+            // Generate random small tubes
+            gameState.smallTubes = generateSmallTubes();
+            // Initialize large tubes (empty)
+            gameState.largeTubes = Array(LARGE_TUBE_COUNT).fill(null).map(() => []);
+            gameState.selectedSmallTube = null;
+            gameState.gameWon = false;
+            gameState.completedLargeTubes = 0;
+            updateUI();
+        }
+
+        function generateSmallTubes() {
+            const tubes = [];
+            
+            // Use only the first 5 colors to ensure solvability
+            // Each color appears exactly 6 times (5 for large tubes, 1 extra)
+            const colorSet = COLORS.slice(0, 5);
+            let balls = [];
+            
+            for (let color of colorSet) {
+                for (let i = 0; i < 6; i++) {
+                    balls.push(color);
+                }
+            }
+            
+            // Fisher-Yates shuffle to randomize
+            for (let i = balls.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [balls[i], balls[j]] = [balls[j], balls[i]];
+            }
+            
+            // Distribute into 6 small tubes with 5 balls each
+            for (let i = 0; i < 6; i++) {
+                const tube = [];
+                for (let j = 0; j < 5; j++) {
+                    tube.push(balls[i * 5 + j]);
+                }
+                tubes.push(tube);
+            }
+            
+            return tubes;
+        }
+
+        function getRandomSubset(array, size) {
+            const result = [];
+            const available = [...array];
+            for (let i = 0; i < size; i++) {
+                const index = Math.floor(Math.random() * available.length);
+                result.push(available[index]);
+                available.splice(index, 1);
+            }
+            return result;
+        }
+
+        function updateUI() {
+            updateSmallTubes();
+            updateLargeTubes();
+            checkWinCondition();
+        }
+
+        function updateSmallTubes() {
+            const container = document.getElementById('smallTubes');
+            container.innerHTML = '';
+
+            gameState.smallTubes.forEach((tube, index) => {
+                const tubeElement = createTubeElement(tube, true, index);
+                container.appendChild(tubeElement);
+            });
+        }
+
+        function updateLargeTubes() {
+            const container = document.getElementById('largeTubes');
+            container.innerHTML = '';
+
+            gameState.largeTubes.forEach((tube, index) => {
+                const tubeElement = createTubeElement(tube, false, index);
+                container.appendChild(tubeElement);
+            });
+        }
+
+        function createTubeElement(tube, isSmall, index) {
+            const div = document.createElement('div');
+            div.className = `tube ${isSmall ? '' : 'large-tube'}`;
+            if (isSmall && gameState.selectedSmallTube === index) {
+                div.classList.add('selected');
+            }
+
+            const bodyDiv = document.createElement('div');
+            bodyDiv.className = 'tube-body';
+
+            // Add liquids
+            const maxSize = isSmall ? SMALL_TUBE_SIZE : LARGE_TUBE_SIZE;
+            for (let i = 0; i < maxSize; i++) {
+                const liquid = document.createElement('div');
+                liquid.className = 'liquid';
+                if (i < tube.length) {
+                    liquid.style.backgroundColor = tube[i];
+                }
+                bodyDiv.appendChild(liquid);
+            }
+
+            const capDiv = document.createElement('div');
+            capDiv.className = 'tube-cap';
+
+            div.appendChild(bodyDiv);
+            div.appendChild(capDiv);
+
+            // Add label with color name for large tubes
+            if (!isSmall) {
+                const labelDiv = document.createElement('div');
+                labelDiv.className = 'tube-label';
+                if (tube.length > 0) {
+                    const topColor = tube[tube.length - 1];
+                    labelDiv.textContent = COLOR_NAMES[topColor] || topColor;
+                }
+                div.appendChild(labelDiv);
+            }
+
+            if (isSmall) {
+                div.addEventListener('click', () => selectSmallTube(index));
+            } else {
+                div.addEventListener('click', () => pourToLargeTube(index));
+            }
+
+            return div;
+        }
+
+        function selectSmallTube(index) {
+            if (gameState.gameWon) return;
+            
+            const tube = gameState.smallTubes[index];
+            if (tube.length === 0) {
+                gameState.selectedSmallTube = null;
+                updateStatus('המבחנה ריקה!');
+            } else {
+                gameState.selectedSmallTube = gameState.selectedSmallTube === index ? null : index;
+                const topColor = tube[tube.length - 1];
+                const colorName = COLOR_NAMES[topColor] || topColor;
+                updateStatus(`בחרת: ${colorName} - לחץ על מבחנה גדולה`);
+            }
+            updateUI();
+        }
+
+        function pourToLargeTube(largeIndex) {
+            if (gameState.gameWon) return;
+            if (gameState.selectedSmallTube === null) {
+                updateStatus('בחר מבחנה קטנה קודם!');
+                return;
+            }
+
+            const smallIndex = gameState.selectedSmallTube;
+            const smallTube = gameState.smallTubes[smallIndex];
+            const largeTube = gameState.largeTubes[largeIndex];
+
+            if (smallTube.length === 0) {
+                updateStatus('המבחנה הקטנה ריקה!');
+                gameState.selectedSmallTube = null;
+                updateUI();
+                return;
+            }
+
+            // Check if large tube is full
+            if (largeTube.length >= LARGE_TUBE_SIZE) {
+                updateStatus('המבחנה הגדולה מלאה!');
+                return;
+            }
+
+            // Check if can pour (same color)
+            if (largeTube.length > 0) {
+                const topSmall = smallTube[smallTube.length - 1];
+                const topLarge = largeTube[largeTube.length - 1];
+                if (topSmall !== topLarge) {
+                    updateStatus('צבעים שונים - לא יכול לשפוך!');
+                    return;
+                }
+            } else {
+                // If the target large tube is empty, check if this color already exists in another large tube
+                const topSmall = smallTube[smallTube.length - 1];
+                for (let i = 0; i < gameState.largeTubes.length; i++) {
+                    if (i !== largeIndex && gameState.largeTubes[i].length > 0) {
+                        const otherTubeColor = gameState.largeTubes[i][0]; // First color in the other tube
+                        if (topSmall === otherTubeColor) {
+                            updateStatus('צבע זה כבר קיים במבחנה אחרת!');
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // Pour
+            const color = smallTube.pop();
+            largeTube.push(color);
+
+            // Check if large tube is now full
+            if (largeTube.length === LARGE_TUBE_SIZE && largeTube.every(c => c === largeTube[0])) {
+                // Increment completed tubes counter
+                gameState.completedLargeTubes++;
+                // Replace with a new empty tube
+                gameState.largeTubes[largeIndex] = [];
+                updateStatus('מבחנה מלאה! החלפה במבחנה ריקה ✨');
+            } else {
+                updateStatus('שפוך בהצלחה! ✨');
+            }
+
+            gameState.selectedSmallTube = null;
+            updateUI();
+        }
+
+        function checkWinCondition() {
+            // Check if all large tubes have been completed and all small tubes are empty
+            const allSmallEmpty = gameState.smallTubes.every(tube => tube.length === 0);
+
+            if (allSmallEmpty && gameState.completedLargeTubes === LARGE_TUBE_COUNT) {
+                gameState.gameWon = true;
+                updateStatus('🎉 כל הכבוד! ניצחת! 🎉');
+                document.querySelector('.status').classList.add('win-message');
+                createFireworks();
+            }
+        }
+
+        function createFireworks() {
+            const fireworksContainer = document.getElementById('fireworks');
+            const colors = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#AA96DA', '#FCBAD3', '#FF8C42', '#2ECC71'];
+            
+            // Create 120 firework particles
+            for (let i = 0; i < 120; i++) {
+                const firework = document.createElement('div');
+                firework.className = 'firework';
+                
+                // Random particle size (8-25px)
+                const size = Math.random() * 17 + 8;
+                firework.style.width = size + 'px';
+                firework.style.height = size + 'px';
+                
+                // Random color
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                firework.style.backgroundColor = color;
+                
+                // Center position
+                firework.style.left = '50%';
+                firework.style.top = '50%';
+                firework.style.marginLeft = (-size / 2) + 'px';
+                firework.style.marginTop = (-size / 2) + 'px';
+                
+                // Calculate random direction (angle)
+                const angle = Math.random() * Math.PI * 2;
+                const distance = 300 + Math.random() * 350; // Random distance between 300-650px
+                const tx = Math.cos(angle) * distance;
+                const ty = Math.sin(angle) * distance;
+                
+                // Set CSS variables for animation
+                firework.style.setProperty('--tx', tx + 'px');
+                firework.style.setProperty('--ty', ty + 'px');
+                
+                // Random animation delay
+                firework.style.animationDelay = Math.random() * 0.2 + 's';
+                
+                fireworksContainer.appendChild(firework);
+            }
+            
+            // Clear fireworks after animation
+            setTimeout(() => {
+                fireworksContainer.innerHTML = '';
+            }, 3000);
+        }
+
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+        }
+
+        function resetGame() {
+            initGame();
+            updateStatus('משחק אופס! 🔄');
+            document.querySelector('.status').classList.remove('win-message');
+            document.getElementById('fireworks').innerHTML = '';
+        }
+
+        function newGame() {
+            initGame();
+            updateStatus('משחק חדש! בהצלחה! 👍');
+            document.querySelector('.status').classList.remove('win-message');
+            document.getElementById('fireworks').innerHTML = '';
+        }
+
+        function autoPlayGame() {
+            if (gameState.gameWon) {
+                updateStatus('המשחק כבר הסתיים! להתחיל משחק חדש');
+                return;
+            }
+
+            updateStatus('🤖 משחק אוטומטי בעיצומו...');
+
+            const autoPlayInterval = setInterval(() => {
+                // Check if game won
+                if (gameState.gameWon) {
+                    clearInterval(autoPlayInterval);
+                    return;
+                }
+
+                let moveMade = false;
+
+                // Try to find a valid move
+                for (let smallIndex = 0; smallIndex < gameState.smallTubes.length && !moveMade; smallIndex++) {
+                    const smallTube = gameState.smallTubes[smallIndex];
+                    
+                    if (smallTube.length === 0) continue;
+
+                    const topSmallColor = smallTube[smallTube.length - 1];
+
+                    // Try to pour into each large tube
+                    for (let largeIndex = 0; largeIndex < gameState.largeTubes.length; largeIndex++) {
+                        const largeTube = gameState.largeTubes[largeIndex];
+
+                        // Check if can pour
+                        if (largeTube.length >= LARGE_TUBE_SIZE) continue;
+
+                        if (largeTube.length > 0) {
+                            const topLargeColor = largeTube[largeTube.length - 1];
+                            if (topSmallColor !== topLargeColor) continue;
+                        } else {
+                            // Check if color already exists in another large tube
+                            let colorExists = false;
+                            for (let i = 0; i < gameState.largeTubes.length; i++) {
+                                if (i !== largeIndex && gameState.largeTubes[i].length > 0) {
+                                    const otherTubeColor = gameState.largeTubes[i][0];
+                                    if (topSmallColor === otherTubeColor) {
+                                        colorExists = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (colorExists) continue;
+                        }
+
+                        // Make the move
+                        const color = smallTube.pop();
+                        largeTube.push(color);
+
+                        // Check if large tube is now full
+                        if (largeTube.length === LARGE_TUBE_SIZE && largeTube.every(c => c === largeTube[0])) {
+                            gameState.completedLargeTubes++;
+                            gameState.largeTubes[largeIndex] = [];
+                        }
+
+                        moveMade = true;
+                        updateUI();
+                        checkWinCondition();
+                        break;
+                    }
+                }
+
+                // If no move made, stop
+                if (!moveMade) {
+                    clearInterval(autoPlayInterval);
+                    updateStatus('🤖 לא יכול להמשיך. משחק ריקוד!');
+                }
+            }, 500);
+        }
+
+        // Initialize game on load
+        window.addEventListener('load', () => {
+            initGame();
+        });
+
+        // Prevent default touch behaviors
+        document.addEventListener('touchmove', (e) => {
+            if (e.target.closest('.tube')) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+    </script>
+</body>
+</html>
